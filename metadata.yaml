@@ -1,0 +1,10 @@
+name: kafka-subscriber
+summary: Sets up a Flask API for Kafka topic subscriptions
+maintainer: Sander Borny <sander.borny@intec.ugent.be>
+description: |
+  Sets up a Flask API for Kafka topic subscriptions
+tags:
+  - flask
+requires:
+  kafka:
+    interface: kafka
