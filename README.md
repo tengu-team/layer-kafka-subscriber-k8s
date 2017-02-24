@@ -2,7 +2,6 @@
 This layer sets up a Flask API to subscribe to Kafka topics.
 
 # Usage
-
 The layer requires a relation with Apache Kafka.
 ```
 juju deploy kafka-subscriber
@@ -22,7 +21,7 @@ juju deploy kafka-subscriber subscriber --config config.yaml
 
 
 ## HTTP Response
-When subscribed to the kafka-subscriber HTTP POST messages will be send to the specified endpoint with a json payload with the following format:
+When subscribed to the kafka-subscriber, HTTP POST messages will be sent to the specified endpoint with the following json payload:
 
 ```
 {
