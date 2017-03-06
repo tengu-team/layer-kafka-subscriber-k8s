@@ -5,6 +5,7 @@ import json
 import urllib.request
 import datetime
 from kafka import KafkaConsumer
+from urllib.error import URLError, HTTPError
 
 def is_json(myjson):
   try:
@@ -14,7 +15,7 @@ def is_json(myjson):
   return True
 
 def main():
-    topics = tuple(filter(None, os.environ['topics'].split(' ')))
+    topics = os.environ['topics'].split(' ')
     endpoint = os.environ['endpoint']
     kafkaip = os.environ['kafkaip']
 
@@ -34,7 +35,12 @@ def main():
         else:
             msg_dict['message'] = msg_value
         params = json.dumps(msg_dict).encode('utf-8')
-        req = urllib.request.Request(endpoint, data=params, headers={'content-type': 'application/json'})
+        try:
+            req = urllib.request.Request(endpoint, data=params, headers={'content-type': 'application/json'})
+        except HTTPError as e:
+            print('Error code: ', e.code)
+        except URLError as e:
+            print('Reason: ', e.reason)
         response = urllib.request.urlopen(req)
 
 if __name__ == '__main__':

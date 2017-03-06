@@ -1,0 +1,3 @@
+"xdg" = "Environment=XDG_RUNTIME_DIR=/run/user/1000"
+"startpre" = "ExecStartPre=/bin/bash /home/ubuntu/kafkasubscriber/start-consumer.sh"
+"stoppost" = "ExecStopPost=/bin/bash /home/ubuntu/kafkasubscriber/stop-consumer.sh"

@@ -1,1 +1,1 @@
-includes: ['layer:basic', 'layer:flask', 'interface:kafka']
+includes: ['layer:basic', 'layer:flask', 'layer:kafka-helper','interface:kafka']

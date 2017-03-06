@@ -2,7 +2,7 @@ import os
 import json
 import urllib
 import jinja2
-from flask import Flask, jsonify, request, abort
+from flask import Flask, jsonify, request, abort, Response
 from kafka import KafkaConsumer
 from subprocess import Popen, call
 
@@ -11,8 +11,8 @@ app = Flask(__name__)
 class configuration(object):
 
     def __init__(self):
-        if (os.path.exists('/home/ubuntu/kafkasubscriber/kafkaip')):
-            file = open('/home/ubuntu/kafkasubscriber/kafkaip', 'r')
+        if (os.path.exists('/home/ubuntu/kafka-helpers/kafkaip')):
+            file = open('/home/ubuntu/kafka-helpers/kafkaip', 'r')
             self.kafkaip = file.read()
             file.close()
 
