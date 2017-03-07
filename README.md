@@ -1,5 +1,5 @@
 # layer-kafka-subscriber
-This layer sets up a Flask API to subscribe to Kafka topics.
+This layer sets up a Flask API to subscribe to Kafka topics. Subscribing to the api can be done via the [kafka-subclient](https://github.com/IBCNServices/layer-kafka-subclient).
 
 # Usage
 The layer requires a relation with Apache Kafka.
@@ -26,6 +26,7 @@ When subscribed to the kafka-subscriber, HTTP POST messages will be sent to the 
 ```
 {
 	"topic": "topic_name",
+	"subscriberTime": "2017-03-07T14:50:12.584942",
 	"message": "Example message"
 }
 ```
@@ -33,11 +34,25 @@ Incase the message is json formatted, the payload follows the following format:
 ```
 {
 	"topic": "topic_name",
+	"subscriberTime": "2017-03-07T14:50:12.584942",
 	"message": {
 		"attr1": "attr1_value",
 		"attr2": "attr2_value"
 	}
 }
+```
+
+A `subscriberTime` is added to every message before it is sent.
+
+## Subscribing without kafka-subclient
+The api server can be used to subscribe and unsubscribe by using the following HTTP requests.
+`/subscribe` expects a PUT request with a JSON payload containing an array with topics and an endpoint:
+```
+curl -H "Content-Type: application/json" -X PUT -d '{"topics":["topic1", "topic2"],"endpoint":"x.x.x.x"}' http://subscriberip/subscribe
+```
+Unsubscribing can be done by sending an empty topics field to subscribe or via `/unsubscribe`:
+```
+curl -H "Content-Type: application/json" -X DELETE -d '{"endpoint":"x.x.x.x"}' http://subscriberip/unsubscribe
 ```
 
 
