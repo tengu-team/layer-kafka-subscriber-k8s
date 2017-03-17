@@ -6,6 +6,7 @@ from charms.reactive import set_state, remove_state
 from charmhelpers.core import hookenv, host, templating
 from charmhelpers.core.hookenv import open_port, close_port, charm_dir, status_set
 from charms.layer.flaskhelpers import start_api, install_requirements, stop_api
+from charmhelpers.contrib.python.packages import pip_install
 from subprocess import call
 
 config = hookenv.config()
@@ -15,6 +16,9 @@ project_path = "/home/ubuntu/kafkasubscriber"
 @when_not('kafkasubscriber.installed')
 def install():
     hookenv.log("Installing Flask API")
+    pkgs = ['requests', 'backoff']
+    for pkg in pkgs:
+        pip_install(pkg)
     if os.path.exists('/home/ubuntu/kafkasubscriber'):
         shutil.rmtree('/home/ubuntu/kafkasubscriber')
     shutil.copytree('files/kafkasubscriber', '/home/ubuntu/kafkasubscriber')
@@ -26,7 +30,7 @@ def install():
     os.chmod('/home/ubuntu/kafkasubscriber/start-consumer.sh', 0o775)
     os.chmod('/home/ubuntu/kafkasubscriber/stop-consumer.sh', 0o775)
     shutil.chown('/home/ubuntu/kafkasubscriber/start-consumer.sh', user='ubuntu', group='ubuntu')
-    shutil.chown('/home/ubuntu/kafkasubscriber/stop-consumer.sh', user='ubuntu', group='ubuntu')
+    shutil.chown('/home/ubuntu/kafkasubscriber/stop-consumer.sh', user='ubuntu', group='ubuntu')    
     if not os.path.exists('/home/ubuntu/kafka-helpers/kafkaip'):
         status_set('blocked', 'Waiting for Kafka relation')
     else:
@@ -51,8 +55,24 @@ def update_status():
 @when('kafkasubscriber.installed', 'kafka.configured')
 @when_not('kafkasubscriber.running')
 def start():
-    hookenv.log("Starting API")
+    hookenv.log("Starting API")    
     start_api(project_path + "/server.py", "app", config["flask-port"], 'kafkasub.unitfile')
     status_set('active', 'Ready')
     remove_state('kafkasubscriber.stopped')
     set_state('kafkasubscriber.running')
+'''
+@when('config.changed.credentials', 'kafkasubscriber.installed')
+def config_changed_credentials():
+    hookenv.log('Config changed credentials')
+    write_credentials()
+    remove_state('kafkasubscriber.running')
+
+def write_credentials():
+     with open(project_path + '/credentials', 'w') as f:
+        credentials = config['credentials'].split(' ')
+        if len(credentials) > 1:
+            f.write("USER='" + credentials[0] + "'\n")
+            f.write("PASS='" + credentials[1] + "'\n")
+        else:
+            f.write('')
+'''

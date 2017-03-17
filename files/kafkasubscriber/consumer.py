@@ -2,10 +2,10 @@
 import os
 import sys
 import json
-import urllib.request
 import datetime
+import requests
+import backoff
 from kafka import KafkaConsumer
-from urllib.error import URLError, HTTPError
 
 def is_json(myjson):
   try:
@@ -13,6 +13,11 @@ def is_json(myjson):
   except ValueError:
     return False
   return True
+
+@backoff.on_exception(backoff.expo, requests.exceptions.RequestException, max_value=32)
+def send(endpoint, data):
+    r = requests.post(endpoint, json=data)
+    r.raise_for_status()
 
 def main():
     topics = os.environ['topics'].split(' ')
@@ -34,14 +39,7 @@ def main():
             msg_dict['message'] = json.loads(msg_value)
         else:
             msg_dict['message'] = msg_value
-        params = json.dumps(msg_dict).encode('utf-8')
-        try:
-            req = urllib.request.Request(endpoint, data=params, headers={'content-type': 'application/json'})
-        except HTTPError as e:
-            print('Error code: ', e.code)
-        except URLError as e:
-            print('Reason: ', e.reason)
-        response = urllib.request.urlopen(req)
+        send(endpoint, msg_dict)
 
 if __name__ == '__main__':
     main()
