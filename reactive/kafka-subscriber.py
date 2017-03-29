@@ -12,6 +12,7 @@ from subprocess import call
 config = hookenv.config()
 project_path = "/home/ubuntu/kafkasubscriber"
 
+
 @when('flask.nginx.installed')
 @when_not('kafkasubscriber.installed')
 def install():
@@ -30,12 +31,14 @@ def install():
     os.chmod('/home/ubuntu/kafkasubscriber/start-consumer.sh', 0o775)
     os.chmod('/home/ubuntu/kafkasubscriber/stop-consumer.sh', 0o775)
     shutil.chown('/home/ubuntu/kafkasubscriber/start-consumer.sh', user='ubuntu', group='ubuntu')
-    shutil.chown('/home/ubuntu/kafkasubscriber/stop-consumer.sh', user='ubuntu', group='ubuntu')    
+    shutil.chown('/home/ubuntu/kafkasubscriber/stop-consumer.sh', user='ubuntu', group='ubuntu')
+    call(['loginctl', 'enable-linger', 'ubuntu'])
     if not os.path.exists('/home/ubuntu/kafka-helpers/kafkaip'):
         status_set('blocked', 'Waiting for Kafka relation')
     else:
         status_set('active', 'Ready')
     set_state('kafkasubscriber.installed')
+
 
 @hook('upgrade-charm')
 def upgrade_charm():
@@ -44,22 +47,26 @@ def upgrade_charm():
     remove_state('kafkasubscriber.stopped')
     remove_state('kafkasubscriber.running')
 
+
 @when('kafkasubscriber.running')
 @when_not('kafka.configured', 'kafkasubscriber.stopped')
 def update_status():
-    stop_api()    
+    stop_api()
     remove_state('kafkasubscriber.running')
     set_state('kafkasubscriber.stopped')
     status_set('blocked', 'Waiting for Kafka relation')
 
+
 @when('kafkasubscriber.installed', 'kafka.configured')
 @when_not('kafkasubscriber.running')
 def start():
-    hookenv.log("Starting API")    
+    hookenv.log("Starting API")
     start_api(project_path + "/server.py", "app", config["flask-port"], 'kafkasub.unitfile')
     status_set('active', 'Ready')
     remove_state('kafkasubscriber.stopped')
     set_state('kafkasubscriber.running')
+
+
 '''
 @when('config.changed.credentials', 'kafkasubscriber.installed')
 def config_changed_credentials():
