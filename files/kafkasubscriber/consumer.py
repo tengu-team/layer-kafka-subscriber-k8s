@@ -7,17 +7,20 @@ import requests
 import backoff
 from kafka import KafkaConsumer
 
+
 def is_json(myjson):
-  try:
-    json_object = json.loads(myjson)
-  except ValueError:
-    return False
-  return True
+    try:
+        json_object = json.loads(myjson)
+    except ValueError:
+        return False
+    return True
+
 
 @backoff.on_exception(backoff.expo, requests.exceptions.RequestException, max_value=32)
 def send(endpoint, data):
     r = requests.post(endpoint, json=data)
     r.raise_for_status()
+
 
 def main():
     topics = os.environ['topics'].split(' ')
@@ -27,7 +30,7 @@ def main():
     consumer = KafkaConsumer(bootstrap_servers=kafkaip, group_id=endpoint)
     consumer.subscribe(topics=topics)
 
-    if not endpoint.startswith('http://'):
+    if not endpoint.startswith('http'):
         endpoint = 'http://' + endpoint
 
     for msg in consumer:
@@ -40,6 +43,7 @@ def main():
         else:
             msg_dict['message'] = msg_value
         send(endpoint, msg_dict)
+
 
 if __name__ == '__main__':
     main()
