@@ -1,10 +1,8 @@
 import os
-import json
-import urllib
 import jinja2
 from flask import Flask, jsonify, request, abort, Response
+from subprocess import call
 from kafka import KafkaConsumer
-from subprocess import Popen, call
 
 app = Flask(__name__)
 
@@ -12,9 +10,10 @@ app = Flask(__name__)
 class configuration(object):
     def __init__(self):
         if os.path.exists('/home/ubuntu/kafka-helpers/kafkaip'):
-            file = open('/home/ubuntu/kafka-helpers/kafkaip', 'r')
-            self.kafkaip = file.read()
-            file.close()
+            with open('/home/ubuntu/kafka-helpers/kafkaip') as f:
+                content = f.readlines()
+            self.kafkaip = [x.strip() for x in content]
+            self.kafkaconsumer = KafkaConsumer(bootstrap_servers=self.kafkaip)
 
     def configure_kafka(self, kafkaip):
         self.kafkaip = kafkaip
@@ -25,7 +24,7 @@ class configuration(object):
             env_vars = [
                 "topics={}".format(' '.join(topics)),
                 "endpoint={}".format(endpoint),
-                "kafkaip={}".format(self.kafkaip)
+                "kafkaip={}".format(' '.join(self.kafkaip))
             ]
             self.render(source='/home/ubuntu/kafkasubscriber/templates/unitfile.consumer',
                         target='/home/ubuntu/.config/systemd/user/consumer-' + endpoint + '.service',
@@ -50,6 +49,13 @@ class configuration(object):
                 loader=jinja2.FileSystemLoader(path or './')
             ).get_template(filename).render(context))
 
+    def check_topics(self, topics):
+        server_topics = self.kafkaconsumer.topics()
+        for topic in topics:
+            if topic not in server_topics:
+                return False
+        return True
+
 
 server_config = configuration()
 
@@ -59,6 +65,8 @@ def subscribe():
     if not request.json:
         abort(400)
     if request.json['topics'] and request.json['endpoint']:
+        if not server_config.check_topics(request.json['topics']):
+            return jsonify({'status': 400})
         server_config.start_consumer(request.json['endpoint'], request.json['topics'])
     return jsonify({'status': 200})
 

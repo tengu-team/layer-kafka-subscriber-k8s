@@ -25,7 +25,7 @@ def send(endpoint, data):
 def main():
     topics = os.environ['topics'].split(' ')
     endpoint = os.environ['endpoint']
-    kafkaip = os.environ['kafkaip']
+    kafkaip = os.environ['kafkaip'].split(' ')
 
     consumer = KafkaConsumer(bootstrap_servers=kafkaip, group_id=endpoint)
     consumer.subscribe(topics=topics)

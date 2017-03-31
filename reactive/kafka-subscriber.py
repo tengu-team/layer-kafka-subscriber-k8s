@@ -65,21 +65,3 @@ def start():
     status_set('active', 'Ready')
     remove_state('kafkasubscriber.stopped')
     set_state('kafkasubscriber.running')
-
-
-'''
-@when('config.changed.credentials', 'kafkasubscriber.installed')
-def config_changed_credentials():
-    hookenv.log('Config changed credentials')
-    write_credentials()
-    remove_state('kafkasubscriber.running')
-
-def write_credentials():
-     with open(project_path + '/credentials', 'w') as f:
-        credentials = config['credentials'].split(' ')
-        if len(credentials) > 1:
-            f.write("USER='" + credentials[0] + "'\n")
-            f.write("PASS='" + credentials[1] + "'\n")
-        else:
-            f.write('')
-'''
