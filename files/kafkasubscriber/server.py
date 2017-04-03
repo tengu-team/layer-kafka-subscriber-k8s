@@ -11,8 +11,8 @@ class configuration(object):
     def __init__(self):
         if os.path.exists('/home/ubuntu/kafka-helpers/kafkaip'):
             with open('/home/ubuntu/kafka-helpers/kafkaip') as f:
-                content = f.readlines()
-            self.kafkaip = [x.strip() for x in content]
+                content = f.readline().rstrip()
+            self.kafkaip = content.split(',')
             self.kafkaconsumer = KafkaConsumer(bootstrap_servers=self.kafkaip)
 
     def configure_kafka(self, kafkaip):
