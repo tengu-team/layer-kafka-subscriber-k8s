@@ -65,3 +65,9 @@ def start():
     status_set('active', 'Ready')
     remove_state('kafkasubscriber.stopped')
     set_state('kafkasubscriber.running')
+
+@when('kafka.changed', 'kafkasubscriber.running')
+def kafka_config_changed():
+    hookenv.log('Kafka config changed, restarting subscriber and consumers')
+    start_api(project_path + "/server.py", "app", config["flask-port"], 'kafkasub.unitfile')
+    remove_state('kafka.changed')
