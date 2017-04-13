@@ -55,9 +55,31 @@ Unsubscribing can be done by sending an empty topics field to subscribe or via `
 curl -H "Content-Type: application/json" -X DELETE -d '{"endpoint":"x.x.x.x"}' http://subscriberip/unsubscribe
 ```
 
+## Sending data to Kafka
+Sending data to Kafka can be done via POST and a json payload. The payload should indicate if the message is json formatted have the following structure:
+```
+{
+    "message": ... ,
+    "json": [true | false]
+}
+```
+
+Sending to a Kafka topic without key `/kafka/<topic>`:
+```
+curl -H "Content-Type: application/json" -X POST -d '{"message": {"field1": "value1"}, "json": true}' http://subscriberip/kafka/topic
+```
+Sending to a Kafka topic with key `/kafka/<topic>/<key>`:
+```
+curl -H "Content-Type: application/json" -X POST -d '{"message": {"field1": "value1"}, "json": true}' http://subscriberip/kafka/topic/key
+```
+
+## Default behaviour
+- Subscribing or writing data to a topic that does not exists, results in a 400 response. Even if Kafka auto topic create is configured.
+
 
 ## Authors
 
-This software was created in the [IBCN research group](https://www.ibcn.intec.ugent.be/) of [Ghent University](http://www.ugent.be/en) in Belgium. This software is used in [Tengu](http://tengu.intec.ugent.be), a project that aims to make experimenting with data frameworks and tools as easy as possible.
+This software was created in the [IBCN research group](https://www.ibcn.intec.ugent.be/) of [Ghent University](https://www.ugent.be/en) in Belgium. This software is used in [Tengu](http://tengu.intec.ugent.be), a project that aims to make experimenting with data frameworks and tools as easy as possible.
 
  - Sander Borny <sander.borny@intec.ugent.be>
+ - Crawler icon made by [Freepik](http://www.freepik.com) from [www.flaticon.com](www.flaticon.com) licensed as [Creative Commons BY 3.0](http://creativecommons.org/licenses/by/3.0/)

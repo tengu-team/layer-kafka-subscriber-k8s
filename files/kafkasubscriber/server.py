@@ -1,8 +1,9 @@
 import os
 import jinja2
+import json
 from flask import Flask, jsonify, request, abort, Response
 from subprocess import call
-from kafka import KafkaConsumer
+from kafka import KafkaConsumer, KafkaProducer
 
 app = Flask(__name__)
 
@@ -14,6 +15,7 @@ class configuration(object):
                 content = f.readline().rstrip()
             self.kafkaip = content.split(',')
             self.kafkaconsumer = KafkaConsumer(bootstrap_servers=self.kafkaip)
+            self.kafkaproducer = KafkaProducer(bootstrap_servers=self.kafkaip)
 
     def configure_kafka(self, kafkaip):
         self.kafkaip = kafkaip
@@ -56,27 +58,45 @@ class configuration(object):
                 return False
         return True
 
+    def send_to_kafka(self, topic, msg, json_message):
+        if json_message:
+            try:
+                self.kafkaproducer.send(topic, json.dumps(msg).encode('utf-8'))
+            except ValueError as e:
+                abort(400)
+        else:
+            self.kafkaproducer.send(topic, msg.encode('utf-8'))
+
+    def send_to_kafka_key(self, topic, msg, json_message, key):
+        if json_message:
+            try:
+                self.kafkaproducer.send(topic, key=key.encode('utf-8'), value=json.dumps(msg).encode('utf-8'))
+            except ValueError as e:
+                abort(400)
+        else:
+            self.kafkaproducer.send(topic, key=key.encode('utf-8'), value=msg.encode('utf-8'))
+
 
 server_config = configuration()
 
 
 @app.route('/subscribe', methods=['PUT'])
 def subscribe():
-    if not request.json:
-        abort(400)
-    if request.json['topics'] and request.json['endpoint']:
+    if request.json and 'topics' in request.json and 'endpoint' in request.json:
         if not server_config.check_topics(request.json['topics']):
             return jsonify({'status': 400})
         server_config.start_consumer(request.json['endpoint'], request.json['topics'])
+    else:
+        abort(400)
     return jsonify({'status': 200})
 
 
 @app.route('/unsubscribe', methods=['DELETE'])
 def unsubscribe():
-    if not request.json:
-        abort(400)
-    if request.json['endpoint']:
+    if request.json and 'endpoint' in request.json:
         server_config.stop_consumer(request.json['endpoint'])
+    else:
+        abort(400)
     return jsonify({'status': 200})
 
 
@@ -84,6 +104,28 @@ def unsubscribe():
 def ping():
     resp = Response("pong")
     return resp
+
+
+@app.route('/kafka/<topic>', methods=['POST'])
+def write_to_kafka(topic):    
+    if not server_config.check_topics([topic]) \
+       or not request.json \
+       or not 'message' in request.json \
+       or not 'json' in request.json:
+        abort(400)
+    server_config.send_to_kafka(topic, request.json['message'], request.json['json'])
+    return jsonify({'status': 200})
+
+
+@app.route('/kafka/<topic>/<key>', methods=['POST'])
+def write_to_kafka_key(topic, key):
+    if not server_config.check_topics([topic]) \
+       or not request.json \
+       or not 'message' in request.json \
+       or not 'json' in request.json:
+        abort(400)
+    server_config.send_to_kafka_key(topic, request.json['message'], request.json['json'], key)
+    return jsonify({'status': 200})
 
 
 if __name__ == "__main__":
