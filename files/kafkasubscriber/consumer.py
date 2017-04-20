@@ -5,6 +5,7 @@ import json
 import datetime
 import requests
 import backoff
+import hashlib
 from kafka import KafkaConsumer
 
 
@@ -25,9 +26,10 @@ def send(endpoint, data):
 def main():
     topics = os.environ['topics'].split(' ')
     endpoint = os.environ['endpoint']
+    id = hashlib.sha224(endpoint.encode('utf-8')).hexdigest()
     kafkaip = os.environ['kafkaip'].split(' ')
 
-    consumer = KafkaConsumer(bootstrap_servers=kafkaip, group_id=endpoint)
+    consumer = KafkaConsumer(bootstrap_servers=kafkaip, group_id=id)
     consumer.subscribe(topics=topics)
 
     if not endpoint.startswith('http'):
