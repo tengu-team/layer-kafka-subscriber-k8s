@@ -1,6 +1,7 @@
 import os
 import jinja2
 import json
+import hashlib
 from flask import Flask, jsonify, request, abort, Response
 from subprocess import call
 from kafka import KafkaConsumer, KafkaProducer
@@ -28,21 +29,23 @@ class configuration(object):
                 "endpoint={}".format(endpoint),
                 "kafkaip={}".format(' '.join(self.kafkaip))
             ]
+            id = hashlib.sha224(endpoint.encode('utf-8')).hexdigest()
             self.render(source='/home/ubuntu/kafkasubscriber/templates/unitfile.consumer',
-                        target='/home/ubuntu/.config/systemd/user/consumer-' + endpoint + '.service',
+                        target='/home/ubuntu/.config/systemd/user/consumer-' + id + '.service',
                         context={
                             'description': 'Kafka consumer for ' + endpoint,
                             'env_vars': env_vars
                         })
-            call(["systemctl", "--user", "enable", "consumer-" + endpoint])
-            call(["systemctl", "--user", "start", "consumer-" + endpoint])
+            call(["systemctl", "--user", "enable", "consumer-" + id])
+            call(["systemctl", "--user", "start", "consumer-" + id])
 
     def stop_consumer(self, endpoint):
-        if call(["systemctl", "--user", "-q", "is-active", "consumer-" + endpoint]) == 0:  # 0 = active
-            call(["systemctl", "--user", "stop", "consumer-" + endpoint])
-            call(["systemctl", "--user", "disable", "consumer-" + endpoint])
-        if os.path.exists('/home/ubuntu/.config/systemd/user/consumer-' + endpoint + '.service'):
-            os.remove('/home/ubuntu/.config/systemd/user/consumer-' + endpoint + '.service')
+        id = hashlib.sha224(endpoint.encode('utf-8')).hexdigest()
+        if call(["systemctl", "--user", "-q", "is-active", "consumer-" + id]) == 0:  # 0 = active
+            call(["systemctl", "--user", "stop", "consumer-" + id])
+            call(["systemctl", "--user", "disable", "consumer-" + id])
+        if os.path.exists('/home/ubuntu/.config/systemd/user/consumer-' + id + '.service'):
+            os.remove('/home/ubuntu/.config/systemd/user/consumer-' + id + '.service')
 
     def render(self, source, context, target):
         path, filename = os.path.split(source)
