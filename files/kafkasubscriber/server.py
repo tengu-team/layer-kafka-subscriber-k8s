@@ -21,13 +21,14 @@ class configuration(object):
     def configure_kafka(self, kafkaip):
         self.kafkaip = kafkaip
 
-    def start_consumer(self, endpoint, topics):
+    def start_consumer(self, endpoint, topics, replay):
         self.stop_consumer(endpoint)
         if len(topics) > 0 and topics[0] != "":
             env_vars = [
                 "topics={}".format(' '.join(topics)),
                 "endpoint={}".format(endpoint),
-                "kafkaip={}".format(' '.join(self.kafkaip))
+                "kafkaip={}".format(' '.join(self.kafkaip)),
+                "replay={}".format(replay)
             ]
             id = hashlib.sha224(endpoint.encode('utf-8')).hexdigest()
             self.render(source='/home/ubuntu/kafkasubscriber/templates/unitfile.consumer',
@@ -36,14 +37,14 @@ class configuration(object):
                             'description': 'Kafka consumer for ' + endpoint,
                             'env_vars': env_vars
                         })
-            call(["systemctl", "--user", "enable", "consumer-" + id])
+            #call(["systemctl", "--user", "enable", "consumer-" + id])
             call(["systemctl", "--user", "start", "consumer-" + id])
 
     def stop_consumer(self, endpoint):
         id = hashlib.sha224(endpoint.encode('utf-8')).hexdigest()
         if call(["systemctl", "--user", "-q", "is-active", "consumer-" + id]) == 0:  # 0 = active
             call(["systemctl", "--user", "stop", "consumer-" + id])
-            call(["systemctl", "--user", "disable", "consumer-" + id])
+            #call(["systemctl", "--user", "disable", "consumer-" + id])
         if os.path.exists('/home/ubuntu/.config/systemd/user/consumer-' + id + '.service'):
             os.remove('/home/ubuntu/.config/systemd/user/consumer-' + id + '.service')
 
@@ -88,7 +89,8 @@ def subscribe():
     if request.json and 'topics' in request.json and 'endpoint' in request.json:
         if not server_config.check_topics(request.json['topics']):
             return jsonify({'status': 400})
-        server_config.start_consumer(request.json['endpoint'], request.json['topics'])
+        replay = 'True' if 'replay' in request.json and request.json['replay'] else "False"
+        server_config.start_consumer(request.json['endpoint'], request.json['topics'], replay)
     else:
         abort(400)
     return jsonify({'status': 200})

@@ -50,6 +50,10 @@ The api server can be used to subscribe and unsubscribe by using the following H
 ```
 curl -H "Content-Type: application/json" -X PUT -d '{"topics":["topic1", "topic2"],"endpoint":"x.x.x.x"}' http://subscriberip/subscribe
 ```
+Replaying a topic from the start can be done by adding a `replay: true` field to the JSON payload:
+```
+curl -H "Content-Type: application/json" -X PUT -d '{"topics":["topic1", "topic2"],"endpoint":"x.x.x.x", "replay": true}' http://subscriberip/subscribe 
+```
 Unsubscribing can be done by sending an empty topics field to subscribe or via `/unsubscribe`:
 ```
 curl -H "Content-Type: application/json" -X DELETE -d '{"endpoint":"x.x.x.x"}' http://subscriberip/unsubscribe
@@ -75,7 +79,9 @@ curl -H "Content-Type: application/json" -X POST -d '{"message": {"field1": "val
 
 ## Default behaviour
 - Subscribing or writing data to a topic that does not exists, results in a 400 response. Even if Kafka auto topic create is configured.
-
+- Replaying a topic will start from the earliest available offset and will keep running, eventually behaving like a normal subscribe request.
+- Requesting a replay of a topic and resending a subscribe request, with the same endpoint and topics, will start sending messages where the last replay request was stopped.
+- Replaying from a multiple partitioned topic does not guarantee order.
 
 ## Authors
 

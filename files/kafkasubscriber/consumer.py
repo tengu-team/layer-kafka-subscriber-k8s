@@ -6,7 +6,7 @@ import datetime
 import requests
 import backoff
 import hashlib
-from kafka import KafkaConsumer
+from kafka import KafkaConsumer, TopicPartition
 
 
 def is_json(myjson):
@@ -23,14 +23,29 @@ def send(endpoint, data):
     r.raise_for_status()
 
 
+def create_consumer(kafka, group, replay, topics):
+    consumer = KafkaConsumer(bootstrap_servers=kafka, group_id=group)
+    if replay == "True":
+        ps_array = []
+        for topic in topics:
+            for partition in consumer.partitions_for_topic(topic):
+                ps_array.append(TopicPartition(topic, partition))
+
+        consumer.assign(ps_array)
+        consumer.seek_to_beginning()
+    else:
+        consumer.subscribe(topics=topics)
+    return consumer
+
+
 def main():
     topics = os.environ['topics'].split(' ')
     endpoint = os.environ['endpoint']
     id = hashlib.sha224(endpoint.encode('utf-8')).hexdigest()
     kafkaip = os.environ['kafkaip'].split(' ')
+    replay = os.environ['replay']
 
-    consumer = KafkaConsumer(bootstrap_servers=kafkaip, group_id=id)
-    consumer.subscribe(topics=topics)
+    consumer = create_consumer(kafkaip, id, replay, topics)
 
     if not endpoint.startswith('http'):
         endpoint = 'http://' + endpoint
@@ -45,6 +60,8 @@ def main():
         else:
             msg_dict['message'] = msg_value
         send(endpoint, msg_dict)
+        if replay == "True":
+            consumer.commit()
 
 
 if __name__ == '__main__':
