@@ -1,0 +1,26 @@
+apiVersion: apps/v1beta1
+kind: Deployment
+metadata:
+  name: {{name}}
+spec:
+  replicas: {{replicas}}
+  selector:
+    matchLabels:
+      pod-is-for: {{podisfor}}
+  template:
+    metadata:
+      labels:
+        pod-is-for: {{podisfor}}
+    spec:
+      containers:
+      - name: {{cname}}
+        image: {{image}}
+        env:
+{%- for key, value in env_vars.items() %}
+        - name: {{key}}
+          value: {{value}}
+{%- endfor %}
+{%- if imagesecret %}
+      imagePullSecrets:
+        - name: {{imagesecret}}
+{%- endif %}

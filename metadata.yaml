@@ -1,4 +1,4 @@
-name: kafka-subscriber
+name: kafka-subscriber-k8s
 summary: Sets up a Flask API for Kafka topic subscriptions
 maintainer: Sander Borny <sander.borny@intec.ugent.be>
 description: |
@@ -8,3 +8,5 @@ tags:
 requires:
   kafka:
     interface: kafka
+  kube-api:
+    interface: http

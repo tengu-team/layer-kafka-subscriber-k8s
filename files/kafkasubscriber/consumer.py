@@ -1,12 +1,32 @@
 #!/usr/bin/python
 import os
-import sys
 import json
 import datetime
 import requests
 import backoff
 import hashlib
 from kafka import KafkaConsumer, TopicPartition
+from kafka.errors import BrokerNotAvailableError
+from kazoo.client import KazooClient
+
+
+def read_zookeeper(zooport, zoopath):   # exception handling
+    zk = KazooClient(hosts='zookeeper:' + zooport, timeout=60)
+    zk.start()
+    if zk.exists(zoopath):
+        value, stat = zk.get(zoopath)
+        value = value.decode('utf-8')
+    else:
+        value = 'continue'
+    zk.stop()
+    return value
+
+
+def update_zookeeper(zooport, zoopath):   # exception handling
+    zk = KazooClient(hosts='zookeeper:' + zooport, timeout=60)
+    zk.start()
+    zk.create(zoopath, b'continue', makepath=True)  ## set?
+    zk.stop()
 
 
 def is_json(myjson):
@@ -23,16 +43,21 @@ def send(endpoint, data):
     r.raise_for_status()
 
 
-def create_consumer(kafka, group, replay, topics):
-    consumer = KafkaConsumer(bootstrap_servers=kafka, group_id=group)
-    if replay == "True":
+def create_consumer(kafka, group, status, topics):
+    try:
+        consumer = KafkaConsumer(bootstrap_servers=kafka, group_id=group)
+    except BrokerNotAvailableError:
+        create_consumer(kafka, group, status, topics)
+    if status != 'continue':
         ps_array = []
         for topic in topics:
             for partition in consumer.partitions_for_topic(topic):
                 ps_array.append(TopicPartition(topic, partition))
-
         consumer.assign(ps_array)
-        consumer.seek_to_beginning()
+        if status == 'earliest':
+            consumer.seek_to_beginning()
+        else:
+            consumer.seek_to_end()
     else:
         consumer.subscribe(topics=topics)
     return consumer
@@ -43,10 +68,13 @@ def main():
     endpoint = os.environ['endpoint']
     id = hashlib.sha224(endpoint.encode('utf-8')).hexdigest()
     kafkaip = os.environ['kafkaip'].split(' ')
-    replay = os.environ['replay']
+    zooport = os.environ['zooport']
+    zoopath = os.environ['zoopath']
 
-    consumer = create_consumer(kafkaip, id, replay, topics)
+    status = read_zookeeper(zooport, zoopath)
 
+    consumer = create_consumer(kafkaip, id, status, topics)
+    update_zookeeper(zooport, zoopath)
     if not endpoint.startswith('http'):
         endpoint = 'http://' + endpoint
 
@@ -60,7 +88,7 @@ def main():
         else:
             msg_dict['message'] = msg_value
         send(endpoint, msg_dict)
-        if replay == "True":
+        if status != 'continue':
             consumer.commit()
 
 

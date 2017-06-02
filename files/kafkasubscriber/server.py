@@ -5,48 +5,53 @@ import hashlib
 from flask import Flask, jsonify, request, abort, Response
 from subprocess import call
 from kafka import KafkaConsumer, KafkaProducer
+from k8skafka import K8sKafka
+from kazoo.client import KazooClient
 
 app = Flask(__name__)
 
 
 class configuration(object):
     def __init__(self):
-        if os.path.exists('/home/ubuntu/kafka-helpers/kafkaip'):
-            with open('/home/ubuntu/kafka-helpers/kafkaip') as f:
-                content = f.readline().rstrip()
-            self.kafkaip = content.split(',')
-            self.kafkaconsumer = KafkaConsumer(bootstrap_servers=self.kafkaip)
-            self.kafkaproducer = KafkaProducer(bootstrap_servers=self.kafkaip)
+        self.kafkaip = os.environ['kafka'].split(',')
+        self.kafkaconsumer = KafkaConsumer(bootstrap_servers=self.kafkaip)
+        self.kafkaproducer = KafkaProducer(bootstrap_servers=self.kafkaip)
+        self.k8s = K8sKafka(os.environ['k8shost'], os.environ['k8skey'])
+        self.zk = KazooClient(hosts=os.environ['zookeeper']) # , separated list9
 
     def configure_kafka(self, kafkaip):
         self.kafkaip = kafkaip
 
-    def start_consumer(self, endpoint, topics, replay):
+    def start_consumer(self, endpoint, topics, status, pods):
         self.stop_consumer(endpoint)
         if len(topics) > 0 and topics[0] != "":
-            env_vars = [
-                "topics={}".format(' '.join(topics)),
-                "endpoint={}".format(endpoint),
-                "kafkaip={}".format(' '.join(self.kafkaip)),
-                "replay={}".format(replay)
-            ]
             id = hashlib.sha224(endpoint.encode('utf-8')).hexdigest()
-            self.render(source='/home/ubuntu/kafkasubscriber/templates/unitfile.consumer',
-                        target='/home/ubuntu/.config/systemd/user/consumer-' + id + '.service',
-                        context={
-                            'description': 'Kafka consumer for ' + endpoint,
-                            'env_vars': env_vars
-                        })
-            #call(["systemctl", "--user", "enable", "consumer-" + id])
-            call(["systemctl", "--user", "start", "consumer-" + id])
+            zk_node = self.create_zk_node(id, status)
+            env_vars = {
+                "topics": ' '.join(topics),
+                "endpoint": endpoint,
+                "zoopath": zk_node
+            }
+            context = {
+                'env_vars': env_vars,
+                'name': 'dep-' + id,
+                'replicas': pods,
+                'podisfor': id,
+                'cname': 'kafka-sub-consumer',
+                'image': 'sborny/kafka-subscriber',
+                'imagesecret': 'regsecret'
+            }
+            self.render('/home/ubuntu/kafkasubscriber/templates/deployment.tmpl',
+                        context,
+                        '/home/ubuntu/.config/kafkasubscriber/deployments/dep-' + id + '.yaml')
+            self.k8s.create_deployment('/home/ubuntu/.config/kafkasubscriber/deployments/dep-' + id + '.yaml')
 
     def stop_consumer(self, endpoint):
         id = hashlib.sha224(endpoint.encode('utf-8')).hexdigest()
-        if call(["systemctl", "--user", "-q", "is-active", "consumer-" + id]) == 0:  # 0 = active
-            call(["systemctl", "--user", "stop", "consumer-" + id])
-            #call(["systemctl", "--user", "disable", "consumer-" + id])
-        if os.path.exists('/home/ubuntu/.config/systemd/user/consumer-' + id + '.service'):
-            os.remove('/home/ubuntu/.config/systemd/user/consumer-' + id + '.service')
+        # Stop pods
+        path = '/home/ubuntu/.config/kafkasubscriber/deployments/dep-' + id + '.yaml'
+        if os.path.exists(path) and self.k8s.delete_deployment(path):
+            os.remove(path)
 
     def render(self, source, context, target):
         path, filename = os.path.split(source)
@@ -80,6 +85,16 @@ class configuration(object):
         else:
             self.kafkaproducer.send(topic, key=key.encode('utf-8'), value=msg.encode('utf-8'))
 
+    def partition_count(self, topic):
+        return len(self.kafkaconsumer.partitions_for_topic(topic))
+
+    def create_zk_node(self, id, status):
+        self.zk.start()
+        self.zk.ensure_path("/kafkasubscriber/consumers/" + id)
+        self.zk.set("/kafkasubscriber/consumers/" + id, status.encode('utf-8'))
+        self.zk.stop()
+        return "/kafkasubscriber/consumers/" + id
+
 
 server_config = configuration()
 
@@ -89,8 +104,12 @@ def subscribe():
     if request.json and 'topics' in request.json and 'endpoint' in request.json:
         if not server_config.check_topics(request.json['topics']):
             return jsonify({'status': 400})
-        replay = 'True' if 'replay' in request.json and request.json['replay'] else "False"
-        server_config.start_consumer(request.json['endpoint'], request.json['topics'], replay)
+        status = request.json['offset'] if 'offset' in request.json else 'continue'
+        pods = 1 
+        if 'pods' in request.json:
+            max_pods = server_config.partition_count(request.json['topic'])
+            pods = int(request.json['pods']) if request.json['pods'] <= max_pods else 1    
+        server_config.start_consumer(request.json['endpoint'], request.json['topics'], status, pods)
     else:
         abort(400)
     return jsonify({'status': 200})

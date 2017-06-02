@@ -6,10 +6,11 @@ After=nginx.service
 Type=idle
 User=ubuntu
 Group=ubuntu
-{{xdg}}
-{{startpre}}
+Environment="kafka={{kafka}}"
+Environment="k8shost={{k8shost}}"
+Environment="k8skey={{k8skey}}"
+Environment="zookeeper={{zookeeper}}"
 ExecStart=/usr/local/bin/gunicorn --bind 0.0.0.0:{{port}} --pythonpath {{pythonpath}} wsgi:{{app}} -w {{workers}} -p /home/ubuntu/flask/master.pid
-{{stoppost}}
 
 [Install]
 WantedBy=multi-user.target
