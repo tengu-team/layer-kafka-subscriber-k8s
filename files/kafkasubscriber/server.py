@@ -104,10 +104,7 @@ def subscribe():
         if not server_config.check_topics(request.json['topics']):
             return jsonify({'status': 400})
         status = request.json['offset'] if 'offset' in request.json else 'continue'
-        pods = 1 
-        if 'pods' in request.json:
-            max_pods = server_config.partition_count(request.json['topic'])
-            pods = int(request.json['pods']) if request.json['pods'] <= max_pods else 1    
+        pods = int(request.json['pods']) if request.json['pods'] else 1
         server_config.start_consumer(request.json['endpoint'], request.json['topics'], status, pods)
     else:
         abort(400)

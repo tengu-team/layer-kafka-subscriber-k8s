@@ -21,7 +21,7 @@ Layers required to build this charm:
  kubectl create serviceaccount (NAME)
  kubectl get serviceaccounts (NAME) -o yaml
  ```
- The outputted yaml will contain the secret name, in base64, used to fetch the bearer token. This token will be used as `k8skey` config parameter. The token value can be recovered via the kubernetes Dashboard (Config -> Secrets) or manually via:
+ The outputted yaml will contain the secret name used to fetch the bearer token. This token will be used as `k8skey` config parameter. The token value can be recovered via the kubernetes Dashboard (Config -> Secrets) or manually via:
  ```
  kubectl get secret (SECRET_NAME) -o yaml
    apiVersion: v1
@@ -63,11 +63,18 @@ The api server can be used to subscribe and unsubscribe by using the following H
 ```
 curl -H "Content-Type: application/json" -X PUT -d '{"topics":["topic1", "topic2"],"endpoint":"x.x.x.x"}' http://subscriberip/subscribe
 ```
-The POST request has an optional field `offset` which can be set to 3 values: earliest, continue and latest. If a subscribe request is made without a specific `offset` field, the consumer is defaulted to continue.
+The POST request has two optional fields `offset` and `pods`.
+### Offset
+`offset` can be set to 3 values: `earliest`, `continue` and `latest`. If a subscribe request is made without a specific `offset` field, the consumer is defaulted to continue.
 
 For example replaying a topic can be done by sending the following request:
 ```
 curl -H "Content-Type: application/json" -X PUT -d '{"topics":["topic1"],"endpoint":"x.x.x.x", "offset": "earliest"}' http://subscriberip/subscribe
+```
+### Pods
+The number of pods can be set via the `pods` field. The number of pods reflects to total number of consumers in a single consumer group. Setting this value higher than the number of partitions in the topic will have no performance gain. When no pods value is set, this will default to 1 pod. Setting the pods value can be done via:
+```
+curl -H "Content-Type: application/json" -X PUT -d '{"topics":["topic1"],"endpoint":"x.x.x.x", "pods": 2}' http://subscriberip/subscribe
 ```
 Unsubscribing can be done by sending an empty topics field to subscribe or via `/unsubscribe`:
 ```
