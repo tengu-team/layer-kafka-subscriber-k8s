@@ -1,0 +1,5 @@
+options:
+  k8skey:
+    type: string
+    default: ""
+    description: "K8s service account key."

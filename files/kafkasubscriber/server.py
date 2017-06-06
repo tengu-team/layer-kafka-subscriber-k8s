@@ -3,7 +3,6 @@ import jinja2
 import json
 import hashlib
 from flask import Flask, jsonify, request, abort, Response
-from subprocess import call
 from kafka import KafkaConsumer, KafkaProducer
 from k8skafka import K8sKafka
 from kazoo.client import KazooClient
@@ -17,7 +16,7 @@ class configuration(object):
         self.kafkaconsumer = KafkaConsumer(bootstrap_servers=self.kafkaip)
         self.kafkaproducer = KafkaProducer(bootstrap_servers=self.kafkaip)
         self.k8s = K8sKafka(os.environ['k8shost'], os.environ['k8skey'])
-        self.zk = KazooClient(hosts=os.environ['zookeeper']) # , separated list9
+        self.zk = KazooClient(hosts=os.environ['zookeeper'])
 
     def configure_kafka(self, kafkaip):
         self.kafkaip = kafkaip
@@ -39,7 +38,7 @@ class configuration(object):
                 'podisfor': id,
                 'cname': 'kafka-sub-consumer',
                 'image': 'sborny/kafka-subscriber',
-                'imagesecret': 'regsecret'
+                #'imagesecret': 'regsecret'
             }
             self.render('/home/ubuntu/kafkasubscriber/templates/deployment.tmpl',
                         context,
