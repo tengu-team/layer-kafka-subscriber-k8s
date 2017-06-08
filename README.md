@@ -63,13 +63,13 @@ The api server can be used to subscribe and unsubscribe by using the following H
 ```
 curl -H "Content-Type: application/json" -X PUT -d '{"topics":["topic1", "topic2"],"endpoint":"x.x.x.x"}' http://subscriberip/subscribe
 ```
-The POST request has two optional fields `offset` and `pods`.
-### Offset
-`offset` can be set to 3 values: `earliest`, `continue` and `latest`. If a subscribe request is made without a specific `offset` field, the consumer is defaulted to continue.
+The POST request has two optional fields `replay` and `pods`.
+### Replay
+`replay` can be set to `true` or `false`. Default value is `false`.
 
 For example replaying a topic can be done by sending the following request:
 ```
-curl -H "Content-Type: application/json" -X PUT -d '{"topics":["topic1"],"endpoint":"x.x.x.x", "offset": "earliest"}' http://subscriberip/subscribe
+curl -H "Content-Type: application/json" -X PUT -d '{"topics":["topic1"],"endpoint":"x.x.x.x", "replay": true}' http://subscriberip/subscribe
 ```
 ### Pods
 The number of pods can be set via the `pods` field. The number of pods reflects to total number of consumers in a single consumer group. Setting this value higher than the number of partitions in the topic will have no performance gain. When no pods value is set, this will default to 1 pod. Setting the pods value can be done via:

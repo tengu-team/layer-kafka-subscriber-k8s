@@ -60,9 +60,6 @@ def config_changed_k8skey(kube):
 @when_not('kafkasubscriber.installed')
 def install(kube):
     hookenv.log("Installing Flask API")
-    pkgs = ['requests', 'backoff', 'kazoo']
-    for pkg in pkgs:
-        pip_install(pkg)
     if os.path.exists('/home/ubuntu/kafkasubscriber'):
         shutil.rmtree('/home/ubuntu/kafkasubscriber')
     shutil.copytree('files/kafkasubscriber', '/home/ubuntu/kafkasubscriber')
@@ -77,15 +74,10 @@ def install(kube):
                          group='ubuntu')
 
     services = kube.services()
-    hookenv.log('SERVICES from kubernetes master')
-    hookenv.log(services)
     db.set('k8s-api', services[0]['hosts'][0]['hostname']
                       + ':'
                       + services[0]['hosts'][0]['port'])
-
-    create_k8_zookeeper_service()
     create_k8_kafka_service()
-
     set_state('kafkasubscriber.installed')
 
 
@@ -122,26 +114,9 @@ def start():
 @when('kafka.changed', 'kafkasubscriber.running')
 def kafka_config_changed():
     hookenv.log('Kafka config changed, restarting subscriber and consumers')
-    create_k8_zookeeper_service()
     create_k8_kafka_service()
     gracefull_reload()
     remove_state('kafka.changed')
-
-
-def create_k8_zookeeper_service():
-    service_context = {
-        'name': 'zookeeper',
-        'port': 2181
-    }
-    zookeepers = []
-    for zoo in db.get('zookeeper'):
-        zookeepers.append(zoo['host'])
-    endpoints_context = {
-        'name': 'zookeeper',
-        'port': db.get('zookeeper')[0]['port'],
-        'ips': zookeepers
-    }
-    create_k8s_service('zookeeper', service_context, endpoints_context)
 
 
 def create_k8_kafka_service():
